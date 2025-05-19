@@ -1,10 +1,12 @@
+#define TRAY_WINAPI 1
+
 #include <Windows.h>
 #include <assert.h>
 #include <stdio.h>
 #include <Powerbase.h>
 extern "C" {
-#include <Powrprof.h>
-
+    #include <Powrprof.h>
+#include <string>
 }
 #pragma comment(lib, "Powrprof.lib")
 
@@ -33,6 +35,7 @@ struct IRadioManagerVtbl {
     HRESULT(STDMETHODCALLTYPE* OnHardwareSliderChange)(IRadioManager* This, int param_1, int param_2);
 };
 
+// Switch AirPlane Mode
 void SetAirPlaneMode(bool isEnable) {
     HRESULT hr;
     IRadioManager* irm;
@@ -44,11 +47,6 @@ void SetAirPlaneMode(bool isEnable) {
         CID_IRadioManager, (void**)&irm);
     assert(!FAILED(hr) && irm);
 
-    int bOldMode, b;
-    _RADIO_CHANGE_REASON c;
-    hr = irm->lpVtbl->GetSystemRadioState(irm, &bOldMode, &b, &c);
-    assert(!FAILED(hr));
-
     /* Set flight mode to the opposite state. */
     hr = irm->lpVtbl->SetSystemRadioState(irm, isEnable);
     assert(!FAILED(hr));
@@ -56,19 +54,19 @@ void SetAirPlaneMode(bool isEnable) {
     CoUninitialize();
 }
 
-// コールバック
+// Callback
 ULONG CALLBACK DeviceNotifyCallbackRoutine(
     _In_opt_ PVOID Context,
     ULONG          Type,
     PVOID          Setting
 ) {
     if (Type == PBT_APMRESUMEAUTOMATIC) {
-        // 復帰
+        // Resume
         printf("AirPlane Disabled\n");
         SetAirPlaneMode(true);
     }
     if (Type == PBT_APMSUSPEND) {
-        // スリープ
+        // Suspend
         printf("AirPlane Enabled\n");
         SetAirPlaneMode(false);
     }
@@ -83,8 +81,15 @@ void RegisterNotification() {
     PowerRegisterSuspendResumeNotification(DEVICE_NOTIFY_CALLBACK, &parameters, &notify);
 }
 
+int main(int argc, char* argv[]) {
+    for (int i = 0; i < argc; i++) {
+        std::string str = argv[i];
+        if (str == "h") {
+            FreeConsole();
+        }
+    }
 
-int main() {
+
     RegisterNotification();
 
     printf("Started\n");
